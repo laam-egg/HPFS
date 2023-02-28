@@ -642,13 +642,13 @@ void scheduleForRackData(string fileName, CropsData * cropsData, string resultSu
     RackScheduler scheduler(cropsData, cropsData->numberOfWeeks);
     scheduler.readRackData(absFile);
     scheduler.runSchedule();
-    scheduler.writeResultToFile(getAbsoluteFileName("result_" + resultSuffix)) ;
+    scheduler.writeResultToFile(getAbsoluteFileName("result_" + resultSuffix + "\\HPFS\\" + fileName)) ;
     regularSchedule.push_back(scheduler.totalRevenue);
 
     RackSchedulerDP DPScheduler(cropsData, cropsData->numberOfWeeks); 
     DPScheduler.readRackData(absFile);
     DPScheduler.runSchedule();
-    DPScheduler.writeResultToFile(getAbsoluteFileName("result_DP_" + resultSuffix)) ;
+    DPScheduler.writeResultToFile(getAbsoluteFileName("result_" + resultSuffix+ "\\DP\\" + fileName)) ;
     DPSchedule.push_back(DPScheduler.totalRevenue);
 
     // shuffled DP
@@ -673,14 +673,14 @@ void scheduleForRackData(string fileName, CropsData * cropsData, string resultSu
         }
     }
     cout << bestScheduler.totalRevenue << endl;
-    bestScheduler.writeResultToFile(getAbsoluteFileName("result_shuffled_DP_" + resultSuffix)) ;
+    bestScheduler.writeResultToFile(getAbsoluteFileName("result_" + resultSuffix+ "\\shuffled_DP\\" + fileName)) ;
     shuffledSchedule.push_back(bestScheduler.totalRevenue);
 
     // DP Multiple Harvest
     RackSchedulerDPMultipleHarvest DPMScheduler(cropsData, cropsData->numberOfWeeks); 
     DPMScheduler.readRackData(absFile);
     DPMScheduler.runSchedule();
-    DPMScheduler.writeResultToFile(getAbsoluteFileName("result_DPM_" + resultSuffix)) ;
+    DPMScheduler.writeResultToFile(getAbsoluteFileName("result_" + resultSuffix+ "\\DP_Multiple\\" + fileName)) ;
     DPMSchedule.push_back(DPMScheduler.totalRevenue);
 
 
@@ -703,9 +703,7 @@ void scheduleForRackData(string fileName, CropsData * cropsData, string resultSu
             bestScheduler = shuffledDPMScheduler;
         }
     }
-    cout << bestSchedulerMultiple.totalRevenue << endl;
-    bestSchedulerMultiple.writeResultToFile(getAbsoluteFileName("result_shuffled_DPM_" + resultSuffix)) ;
-    cout << getAbsoluteFileName("result_shuffled_DPM_" + resultSuffix) << endl;
+    bestSchedulerMultiple.writeResultToFile(getAbsoluteFileName("result_" + resultSuffix + "\\shuffled_DP_Multiple\\" + fileName)) ;
     shuffledScheduleMultiple.push_back(bestSchedulerMultiple.totalRevenue);
 }
 
