@@ -726,9 +726,9 @@ void export_all_revenues(string resultSuffix) {
 }
 
 int main() {
-    string cropDataFile = "datasets/D2/New_QH_Crop_Data.csv";
-    string priceDataFile = "datasets/D2/New_QH_Price_Data.csv";
-    string resultSuffix = "D2";
+    string cropDataFile = "datasets/D1/New_QH_Crop_Data.csv";
+    string priceDataFile = "datasets/D1/New_QH_Price_Data.csv";
+    string resultSuffix = "D1";
 
     CropsData * cropData = new CropsData();
     cropData->getCropsDataFromFile(getAbsoluteFileName(cropDataFile));
