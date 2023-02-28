@@ -1,0 +1,8 @@
+numracks,data,regular_schedule,DP_schedule,shuffled_DP_schedule
+8,rack_data\rack_data_8.csv,1002,1125,1125,7141.34,7141.34
+12,rack_data\rack_data_12.csv,1485.6,1658.4,1658.4,10712,10712
+20,rack_data\rack_data_20.csv,2464.4,2744.6,2744.6,17853.3,17853.3
+50,rack_data\rack_data_50.csv,6172.6,6880.9,6880.9,44633.4,44633.4
+100,rack_data\rack_data_100.csv,12438,13917,13917,89266.7,89266.7
+200,rack_data\rack_data_200.csv,24806.4,27717.6,27717.6,178533,178533
+400,rack_data\rack_data_400.csv,49485.2,55221.8,55221.8,357067,357067

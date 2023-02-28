@@ -99,16 +99,10 @@ public:
     void getCropsDataFromFile(string fileName) {
         ifstream file(fileName.c_str());
         CSVRow row;
-        // cout << fileName << endl;
-        file >> row; // read header
+
+        file >> row; 
         while(file >> row){
             int splitter = row[5].find("-");
-            //Debug
-            // for(int i = 0; i < 7; ++i) {
-            //     cout << row[i] << " ";
-            // }
-            // cout << row[5].substr(1, splitter - 1) << endl;
-            //End debug
             Crop * newCrop = new Crop(row[0], row[1], row[2], stoi(row[3]), stoi(row[4]), stod(row[5].substr(1, splitter - 1)), stoi(row[6]));
             crops.push_back(newCrop);
         }
@@ -170,6 +164,7 @@ public:
     }
 };
 
+int a = 0;
 class Rack {
 public:
     int rackId;
@@ -187,12 +182,12 @@ public:
         cropAtTimeSlot = vector<Crop*>(numberOfTimeSlot, nullptr);
     }
 
-    bool canInsertCultivation(Cultivation cultivation){
+    bool canInsertCultivation(Cultivation cultivation, int extraHarvest = 0){
         if(cultivation.start_week() < 0) {
             return false; 
         }
 
-        for (int w = cultivation.start_week(); w <= cultivation.harvest_week; ++w) {
+        for (int w = cultivation.start_week(); w <= cultivation.harvest_week + extraHarvest; ++w) {
             if (cropAtTimeSlot[w] != nullptr) {
                 return false;
             }
@@ -207,13 +202,14 @@ public:
         return (fi->familyName == se->familyName); 
     }
 
-    bool isValidCultivation(Cultivation cultivation) {
+    bool isValidCultivation(Cultivation cultivation, int extraHarvest = 0) {
         if (cultivation.crop->needSunlight && !haveSunlight) {
             return false;
         }
 
         for(Rack * adjacentRack: adjacentRacks) {
-            for(int w = cultivation.start_week(); w <= cultivation.harvest_week; ++w) {
+            for(int w = cultivation.start_week(); w <= cultivation.harvest_week + extraHarvest; ++w) {
+                // cout << adjacentRack->cropAtTimeSlot.size() << endl;
                 if (isFamily(adjacentRack->cropAtTimeSlot[w], cultivation.crop)) {
                     return false;
                 }
@@ -222,12 +218,17 @@ public:
         return true;
     }
 
-    void insertCultivation(Cultivation cultivation) {
+    double insertCultivation(Cultivation cultivation, int extraHarvest = 0) {
+        double revenue = 0;
         cultivations.push_back(cultivation);
-        for(int w = cultivation.start_week(); w <= cultivation.harvest_week; ++w) {
+        for(int w = cultivation.start_week(); w <= cultivation.harvest_week + extraHarvest; ++w) {
+            if (w > cultivation.harvest_week) {
+                revenue += cultivation.crop->pricePerWeeks[w] * cultivation.crop->harvestedAmount * 0.95;
+            }
             cropAtTimeSlot[w] = cultivation.crop;
         }
         numAvailableTimeSlot -= cultivation.crop->cultivationTimeUnits;
+        return revenue;
     }
 
     bool tryCultivation(Cultivation cultivation) {
@@ -322,7 +323,6 @@ public:
     }
 
     void writeResultToFile(string fileName) {
-        // cout << fileName << endl;
         ofstream file(fileName.c_str());    
         file << "Revenue\n";
 
@@ -424,7 +424,6 @@ public:
     }
     
     void scheduleRack(int rackId) {
-        // cout << rackId << endl;
         Rack * rack = &racks[rackId];
         // optimized revenue by weeks
         vector<vector<double>> DP(numTimeSlot, vector<double>(2, 0));
@@ -508,6 +507,123 @@ public:
 };
 
 
+struct CropExtra {
+    Crop * crop; 
+    int extraTimes;
+
+    CropExtra(Crop * crop, int extraTimes) {
+        this->crop = crop;
+        this->extraTimes = extraTimes;
+    }
+};
+
+class RackSchedulerDPMultipleHarvest : public RackData {
+public:
+    int MAINTAINED = 1;
+    int UN_MAINTAINED = 0;
+    CropsData * cropsData;
+
+    RackSchedulerDPMultipleHarvest(CropsData * cropsData, int numberOfWeeks) : RackData(numberOfWeeks){
+        this->cropsData = cropsData;
+    }
+    
+    void scheduleRack(int rackId) {
+        Rack * rack = &racks[rackId];
+        // optimized revenue by weeks
+        vector<vector<double>> DP(numTimeSlot, vector<double>(2, 0));
+        CropExtra nul = CropExtra(nullptr, -1);
+        // tracer for crop to be harvested by week for optimized revenue
+        vector<vector<CropExtra>> tracer(numTimeSlot, vector<CropExtra>(2, nul));
+
+        // For through weeks
+        for(int week = 0; week < numTimeSlot; ++week) {
+            // Intialize optimize revenue and tracer for first week
+            if (week == 0) {
+                DP[week][MAINTAINED] = DP[week][UN_MAINTAINED] = 0;
+                tracer[week][UN_MAINTAINED] = tracer[week][MAINTAINED] = nul;
+            }
+            else {
+                // Intialize  for following weeks ...
+                // set optimized revenue for this week un-maintained = optimized revenue for last week un-maintained (skip this week)
+                DP[week][UN_MAINTAINED] = DP[week - 1][UN_MAINTAINED]; 
+                // set optimized revenue for this week maintained = max optimized revenue for last week maintained / un-maintained (skip this week)
+                DP[week][MAINTAINED] = max(DP[week - 1][MAINTAINED], DP[week - 1][UN_MAINTAINED]);
+            }
+
+            // consider all crops can be harvested on this week
+            for(Crop * crop: cropsData->crops) {
+                double value = 0;
+                for (int extraHarvest = 0; extraHarvest <= crop->multipleHarvestTimes; ++extraHarvest) {
+                    int totalTimesUnits = crop->cultivationTimeUnits + extraHarvest;
+
+                    if (totalTimesUnits > week + 1) {
+                        continue;
+                    }
+                    
+                    value += crop->pricePerWeeks[week - extraHarvest] * crop->harvestedAmount * 0.95;
+
+                    Cultivation cultivation(value, crop, week - extraHarvest);
+
+                    if(!rack->isValidCultivation(cultivation, extraHarvest)) {
+                        continue;
+                    }
+
+                    // if crop need to be cultivated at first week so rack couldn't be maintained yet
+                    if (totalTimesUnits == week + 1) {
+                        if(value > DP[week][UN_MAINTAINED]) {
+                            DP[week][UN_MAINTAINED] = value; 
+                            tracer[week][UN_MAINTAINED] =  CropExtra(crop, extraHarvest);
+                        }
+                        continue;
+                    }
+
+                    // if there are some free week before crop cultivated
+                    for(int maintained = UN_MAINTAINED; maintained <= MAINTAINED; ++maintained) {
+                        int prevWeek = week - totalTimesUnits;
+                        // if we can cultivate this crop and get higher revenue
+                        if (DP[prevWeek][maintained] + value > DP[week][maintained]) {
+                            DP[week][maintained] = DP[prevWeek][maintained] + value;
+                            tracer[week][maintained] =  CropExtra(crop, extraHarvest);
+                        }
+                    }
+                }
+            }
+        }
+
+        // to trace week back to week
+        int week = numTimeSlot - 1;
+        // to trace with maintanace condition
+        int maintained = MAINTAINED;
+        while(week >= 0) {
+            // cout << week << " " << maintained << endl;
+            if (tracer[week][maintained].extraTimes != -1) {
+                CropExtra cropExtra = tracer[week][maintained]; 
+                Crop * crop = cropExtra.crop; 
+                int extraHarvest = cropExtra.extraTimes;
+                Cultivation cultivation(0, crop, week - extraHarvest);
+                
+                this->totalRevenue += rack->insertCultivation(cultivation, extraHarvest);
+                week -= crop->cultivationTimeUnits + extraHarvest;
+            }
+            else {
+                if(maintained == MAINTAINED && (week == 0 || DP[week][1] == DP[week - 1][UN_MAINTAINED]) )
+                    maintained = UN_MAINTAINED;
+                week -= 1;
+            }
+        }
+        // cout << rackId << endl;
+        // for (int i = 0; i < 40; ++i) {
+        //     cout << rack->cropAtTimeSlot[i]->cropCode << endl;
+        // }
+    }
+
+    void runSchedule() {
+        for(int rackId: racksPermutation) {
+            scheduleRack(rackId);
+        }
+    }
+};
+
 string getAbsoluteFileName(string fileName) {
     return "c:\\Users\\kurod\\Documents\\CPP\\HPFS\\" + fileName;
 }
@@ -516,6 +632,8 @@ string getAbsoluteFileName(string fileName) {
 vector <double> regularSchedule; 
 vector <double> DPSchedule; 
 vector <double> shuffledSchedule; 
+vector <double> DPMSchedule;
+vector <double> shuffledScheduleMultiple;
 
 void scheduleForRackData(string fileName, CropsData * cropsData, string resultSuffix) {
     // cout << fileName << endl;
@@ -533,7 +651,7 @@ void scheduleForRackData(string fileName, CropsData * cropsData, string resultSu
     DPScheduler.writeResultToFile(getAbsoluteFileName("result_DP_" + resultSuffix)) ;
     DPSchedule.push_back(DPScheduler.totalRevenue);
 
-
+    // shuffled DP
     vector <int> shuffled_racks;
     for(int i = 0; i < DPScheduler.racksPermutation.size(); ++i) {
         shuffled_racks.push_back(i);
@@ -543,7 +661,7 @@ void scheduleForRackData(string fileName, CropsData * cropsData, string resultSu
     std::shuffle(std::begin(shuffled_racks), std::end(shuffled_racks), rng);
     double maxRevenue = DPScheduler.totalRevenue;
     RackSchedulerDP bestScheduler = DPScheduler;
-    for(int i = 0; i < 10000; ++i) {
+    for(int i = 0; i < 10; ++i) {
         // cout << "Shuffle: " << i << endl; 
         std::shuffle(std::begin(shuffled_racks), std::end(shuffled_racks), rng);
         RackSchedulerDP shuffledDPScheduler(cropsData, cropsData->numberOfWeeks); 
@@ -557,29 +675,61 @@ void scheduleForRackData(string fileName, CropsData * cropsData, string resultSu
     cout << bestScheduler.totalRevenue << endl;
     bestScheduler.writeResultToFile(getAbsoluteFileName("result_shuffled_DP_" + resultSuffix)) ;
     shuffledSchedule.push_back(bestScheduler.totalRevenue);
+
+    // DP Multiple Harvest
+    RackSchedulerDPMultipleHarvest DPMScheduler(cropsData, cropsData->numberOfWeeks); 
+    DPMScheduler.readRackData(absFile);
+    DPMScheduler.runSchedule();
+    DPMScheduler.writeResultToFile(getAbsoluteFileName("result_DPM_" + resultSuffix)) ;
+    DPMSchedule.push_back(DPMScheduler.totalRevenue);
+
+
+    vector <int> shuffled_racks_2;
+    for(int i = 0; i < DPScheduler.racksPermutation.size(); ++i) {
+        shuffled_racks_2.push_back(i);
+    }
+    rng = std::default_random_engine {};
+    std::shuffle(std::begin(shuffled_racks_2), std::end(shuffled_racks_2), rng);
+    maxRevenue = DPMScheduler.totalRevenue;
+    RackSchedulerDPMultipleHarvest bestSchedulerMultiple = DPMScheduler;
+    for(int i = 0; i < 10; ++i) {
+        // cout << "Shuffle: " << i << endl; 
+        std::shuffle(std::begin(shuffled_racks_2), std::end(shuffled_racks_2), rng);
+        RackSchedulerDP shuffledDPMScheduler(cropsData, cropsData->numberOfWeeks); 
+        shuffledDPMScheduler.readRackData(absFile);
+        shuffledDPMScheduler.racksPermutation = shuffled_racks_2;
+        shuffledDPMScheduler.runSchedule();
+        if (bestScheduler.totalRevenue <  shuffledDPMScheduler.totalRevenue) {
+            bestScheduler = shuffledDPMScheduler;
+        }
+    }
+    cout << bestSchedulerMultiple.totalRevenue << endl;
+    bestSchedulerMultiple.writeResultToFile(getAbsoluteFileName("result_shuffled_DPM_" + resultSuffix)) ;
+    cout << getAbsoluteFileName("result_shuffled_DPM_" + resultSuffix) << endl;
+    shuffledScheduleMultiple.push_back(bestSchedulerMultiple.totalRevenue);
 }
 
 vector <int> num_racks = {8, 12, 20, 50, 100, 200, 400};
-vector<string> rackDataFiles = {"data\\rack_data_8.csv",
-    "data\\rack_data_12.csv",
-    "data\\rack_data_20.csv",
-    "data\\rack_data_50.csv",
-    "data\\rack_data_100.csv",
-    "data\\rack_data_200.csv",
-    "data\\rack_data_400.csv"};
+vector<string> rackDataFiles = {"rack_data\\rack_data_8.csv",
+    "rack_data\\rack_data_12.csv",
+    "rack_data\\rack_data_20.csv",
+    "rack_data\\rack_data_50.csv",
+    "rack_data\\rack_data_100.csv",
+    "rack_data\\rack_data_200.csv",
+    "rack_data\\rack_data_400.csv"};
 
 void export_all_revenues(string resultSuffix) {
     ofstream file(getAbsoluteFileName("all_revenues/" + resultSuffix +  ".csv").c_str()); 
     file << "numracks,data,regular_schedule,DP_schedule,shuffled_DP_schedule" << endl;;
     for(int i = 0; i < rackDataFiles.size(); ++i) {
-        file << num_racks[i] << "," << rackDataFiles[i] << "," << regularSchedule[i] << "," << DPSchedule[i] << "," << shuffledSchedule[i] << endl;
+        file << num_racks[i] << "," << rackDataFiles[i] << "," << regularSchedule[i] << "," << DPSchedule[i] << "," << shuffledSchedule[i] << "," << DPMSchedule[i] << "," << shuffledScheduleMultiple[i] << endl;
     }
     file.close();
 }
 
 int main() {
-    string cropDataFile = "datasets/D1/New_QH_Crop_Data.csv";
-    string priceDataFile = "datasets/D1/New_QH_Price_Data.csv";
+    string cropDataFile = "datasets/D2/New_QH_Crop_Data.csv";
+    string priceDataFile = "datasets/D2/New_QH_Price_Data.csv";
     string resultSuffix = "D2";
 
     CropsData * cropData = new CropsData();
