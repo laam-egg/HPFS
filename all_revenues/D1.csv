@@ -1,8 +1,8 @@
-numracks,data,regular_schedule,DP_schedule,shuffled_DP_schedule
-8,rack_data\rack_data_8.csv,324.88,366.76,366.76,450.832,450.832
-12,rack_data\rack_data_12.csv,373.98,415.18,448.98,579.576,579.576
-20,rack_data\rack_data_20.csv,640.68,738.84,806.44,901.512,901.512
-50,rack_data\rack_data_50.csv,1545.42,1716,1754.04,2318.23,2318.23
-100,rack_data\rack_data_100.csv,3650.38,4047.1,4047.1,5152.04,5152.04
-200,rack_data\rack_data_200.csv,6942.49,7715.61,7715.61,9917.39,9917.39
-400,rack_data\rack_data_400.csv,12931.7,14363.2,14363.2,19125.9,19125.9
+numracks,data,regular_schedule,DP_schedule,shuffled_DP_schedule,optimal_schedule
+8,rack_data\rack_data_8.csv,324.88,366.76,366.76,447.20
+12,rack_data\rack_data_12.csv,373.98,415.18,448.98,550.63
+20,rack_data\rack_data_20.csv,640.68,738.84,806.44,987.01
+50,rack_data\rack_data_50.csv,1545.42,1716,1754.04,2226.57
+100,rack_data\rack_data_100.csv,3650.38,4047.1,4047.1,5215.65
+200,rack_data\rack_data_200.csv,6942.49,7715.61,7715.61,9860.22
+400,rack_data\rack_data_400.csv,12931.7,14363.2,14363.2,18549.75
