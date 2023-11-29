@@ -1,4 +1,4 @@
-numracks,data,regular_schedule,DP_schedule,shuffled_DP_schedule
+numracks,data,regular_schedule,DP_schedule,shuffled_DP_schedule,multiple_harvest_schedule, suffled_multiple_harvest_schedule
 8,rack_data\rack_data_8.csv,1002,1125,1125,7141.34,7141.34
 12,rack_data\rack_data_12.csv,1485.6,1658.4,1658.4,10712,10712
 20,rack_data\rack_data_20.csv,2464.4,2744.6,2744.6,17853.3,17853.3

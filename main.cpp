@@ -1,4 +1,7 @@
 #include <bits/stdc++.h>
+#include <iostream>
+
+#include <filesystem>
 
 using namespace std;
 
@@ -624,8 +627,13 @@ public:
     }
 };
 
+
+
+string rootFolder = "c:\\Users\\kurod\\Documents\\CPP\\HPFS";
+
 string getAbsoluteFileName(string fileName) {
-    return "c:\\Users\\kurod\\Documents\\CPP\\HPFS\\" + fileName;
+
+    return rootFolder + "\\" + fileName;
 }
 
 
@@ -639,17 +647,20 @@ void scheduleForRackData(string fileName, CropsData * cropsData, string resultSu
     // cout << fileName << endl;
     string absFile = getAbsoluteFileName(fileName);
 
+    cout << "Scheduling for rack data file: " << fileName << endl;
     RackScheduler scheduler(cropsData, cropsData->numberOfWeeks);
     scheduler.readRackData(absFile);
     scheduler.runSchedule();
     scheduler.writeResultToFile(getAbsoluteFileName("result_" + resultSuffix + "\\HPFS\\" + fileName)) ;
     regularSchedule.push_back(scheduler.totalRevenue);
+    cout << "Finish HPFS heuristic scheduling, revenue: " << scheduler.totalRevenue << endl;
 
     RackSchedulerDP DPScheduler(cropsData, cropsData->numberOfWeeks); 
     DPScheduler.readRackData(absFile);
     DPScheduler.runSchedule();
     DPScheduler.writeResultToFile(getAbsoluteFileName("result_" + resultSuffix+ "\\DP\\" + fileName)) ;
     DPSchedule.push_back(DPScheduler.totalRevenue);
+    cout << "Finish dynamic programing scheduling, revenue: " << DPScheduler.totalRevenue << endl;
 
     // shuffled DP
     vector <int> shuffled_racks;
@@ -672,7 +683,7 @@ void scheduleForRackData(string fileName, CropsData * cropsData, string resultSu
             bestScheduler = shuffledDPScheduler;
         }
     }
-    cout << bestScheduler.totalRevenue << endl;
+    cout << "Finish shuffled dynamic programing scheduling, revenue: " << bestScheduler.totalRevenue << endl;
     bestScheduler.writeResultToFile(getAbsoluteFileName("result_" + resultSuffix+ "\\shuffled_DP\\" + fileName)) ;
     shuffledSchedule.push_back(bestScheduler.totalRevenue);
 
@@ -682,6 +693,7 @@ void scheduleForRackData(string fileName, CropsData * cropsData, string resultSu
     DPMScheduler.runSchedule();
     DPMScheduler.writeResultToFile(getAbsoluteFileName("result_" + resultSuffix+ "\\DP_Multiple\\" + fileName)) ;
     DPMSchedule.push_back(DPMScheduler.totalRevenue);
+    cout << "Finish multiple harvest dynamic programing scheduling, revenue: " << DPMScheduler.totalRevenue << endl;
 
 
     vector <int> shuffled_racks_2;
@@ -705,6 +717,7 @@ void scheduleForRackData(string fileName, CropsData * cropsData, string resultSu
     }
     bestSchedulerMultiple.writeResultToFile(getAbsoluteFileName("result_" + resultSuffix + "\\shuffled_DP_Multiple\\" + fileName)) ;
     shuffledScheduleMultiple.push_back(bestSchedulerMultiple.totalRevenue);
+    cout << "Finish shuffled multiple harvest dynamic programing scheduling, revenue: " << bestSchedulerMultiple.totalRevenue << endl;
 }
 
 vector <int> num_racks = {8, 12, 20, 50, 100, 200, 400};
@@ -718,7 +731,7 @@ vector<string> rackDataFiles = {"rack_data\\rack_data_8.csv",
 
 void export_all_revenues(string resultSuffix) {
     ofstream file(getAbsoluteFileName("all_revenues/" + resultSuffix +  ".csv").c_str()); 
-    file << "numracks,data,regular_schedule,DP_schedule,shuffled_DP_schedule" << endl;;
+    file << "numracks,data,regular_schedule,DP_schedule,shuffled_DP_schedule,multiple_harvest_schedule, suffled_multiple_harvest_schedule" << endl;;
     for(int i = 0; i < rackDataFiles.size(); ++i) {
         file << num_racks[i] << "," << rackDataFiles[i] << "," << regularSchedule[i] << "," << DPSchedule[i] << "," << shuffledSchedule[i] << "," << DPMSchedule[i] << "," << shuffledScheduleMultiple[i] << endl;
     }
@@ -726,9 +739,10 @@ void export_all_revenues(string resultSuffix) {
 }
 
 int main() {
-    string cropDataFile = "datasets/D1/New_QH_Crop_Data.csv";
-    string priceDataFile = "datasets/D1/New_QH_Price_Data.csv";
-    string resultSuffix = "D1";
+    rootFolder = "c:\\Users\\kurod\\Documents\\CPP\\HPFS";
+    string cropDataFile = "datasets/D2/New_QH_Crop_Data.csv";
+    string priceDataFile = "datasets/D2/New_QH_Price_Data.csv";
+    string resultSuffix = "D2";
 
     CropsData * cropData = new CropsData();
     cropData->getCropsDataFromFile(getAbsoluteFileName(cropDataFile));
